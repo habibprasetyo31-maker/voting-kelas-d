@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Voting</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="card">
+  <h2>Admin Panel Voting</h2>
+
+  <!-- STATUS VOTING -->
+  <h3>Status Voting</h3>
+  <button onclick="openVoting()">🔓 Buka Voting</button>
+  <button onclick="closeVoting()">🔒 Tutup Voting</button>
+
+  <hr>
+
+  <!-- UBAH JUDUL -->
+  <h3>Judul Voting</h3>
+  <input type="text" id="newTitle" placeholder="Masukkan judul baru">
+  <button onclick="updateTitle()">Update Judul</button>
+
+  <hr>
+
+  <!-- TAMBAH KANDIDAT -->
+  <h3>Tambah Kandidat</h3>
+  <input type="text" id="candidateName" placeholder="Nama kandidat">
+  <button onclick="addCandidate()">Tambah Kandidat</button>
+
+  <!-- DAFTAR KANDIDAT -->
+  <h3>Daftar Kandidat</h3>
+  <div id="candidateList"></div>
+
+  <hr>
+
+  <!-- HASIL VOTING -->
+  <h3>Hasil Voting (Ranking)</h3>
+  <div id="hasil"></div>
+
+  <hr>
+
+  <button onclick="resetVoting()">Reset Semua Voting</button>
+</div>
+
+<script type="module">
+import { db, ref, set, get, update, remove, onValue, push } from "./firebase.js";
+
+// ==========================
+// STATUS VOTING
+// ==========================
+window.openVoting = async function() {
+  await update(ref(db, "settings"), {
+    votingOpen: true
+  });
+  alert("Voting dibuka!");
+};
+
+window.closeVoting = async function() {
+  await update(ref(db, "settings"), {
+    votingOpen: false
+  });
+  alert("Voting ditutup!");
+};
+
+// ==========================
+// LOAD DAFTAR KANDIDAT
+// ==========================
+const candidateList = document.getElementById("candidateList");
+
+onValue(ref(db, "candidates"), (snapshot) => {
+  const data = snapshot.val();
+  candidateList.innerHTML = "";
+
+  if (!data) {
+    candidateList.innerHTML = "<p>Belum ada kandidat.</p>";
+    return;
+  }
+
+  Object.keys(data).forEach((id) => {
+    candidateList.innerHTML += `
+      <div style="margin-bottom:10px;">
+        <strong>${data[id].name}</strong>
+        <button onclick="editCandidate('${id}', '${data[id].name}')">Edit</button>
+        <button onclick="deleteCandidate('${id}')">Hapus</button>
+      </div>
+    `;
+  });
+});
+
+// ==========================
+// LOAD HASIL + RANKING
+// ==========================
+const hasilDiv = document.getElementById("hasil");
+
+onValue(ref(db, "results"), async (snapshot) => {
+  const results = snapshot.val();
+  hasilDiv.innerHTML = "";
+
+  if (!results) {
+    hasilDiv.innerHTML = "<p>Belum ada hasil voting.</p>";
+    return;
+  }
+
+  const candidateSnapshot = await get(ref(db, "candidates"));
+  const candidates = candidateSnapshot.val();
+  if (!candidates) return;
+
+  let rankingData = [];
+
+  Object.keys(results).forEach((id) => {
+    if (candidates[id]) {
+      rankingData.push({
+        name: candidates[id].name,
+        votes: results[id]
+      });
+    }
+  });
+
+  rankingData.sort((a, b) => b.votes - a.votes);
+
+  rankingData.forEach((item, index) => {
+    let medal = "";
+    let bgColor = "#ffffff";
+
+    if (index === 0) {
+      medal = "🥇";
+      bgColor = "#ffeaa7";
+    } else if (index === 1) {
+      medal = "🥈";
+      bgColor = "#dfe6e9";
+    } else if (index === 2) {
+      medal = "🥉";
+      bgColor = "#fab1a0";
+    }
+
+    hasilDiv.innerHTML += `
+      <div style="
+        background:${bgColor};
+        padding:12px;
+        margin-bottom:10px;
+        border-radius:8px;
+        font-weight:bold;
+      ">
+        ${medal} Ranking ${index + 1} <br>
+        ${item.name} <br>
+        ${item.votes} suara
+      </div>
+    `;
+  });
+});
+
+// ==========================
+// UPDATE JUDUL
+// ==========================
+window.updateTitle = async function() {
+  const title = document.getElementById("newTitle").value;
+  if (!title) return alert("Judul tidak boleh kosong!");
+
+  await set(ref(db, "settings/title"), title);
+  alert("Judul berhasil diperbarui!");
+};
+
+// ==========================
+// TAMBAH KANDIDAT
+// ==========================
+window.addCandidate = async function() {
+  const name = document.getElementById("candidateName").value;
+  if (!name) return alert("Nama kandidat tidak boleh kosong!");
+
+  const newRef = push(ref(db, "candidates"));
+
+  await set(newRef, { name: name });
+  await set(ref(db, "results/" + newRef.key), 0);
+
+  document.getElementById("candidateName").value = "";
+  alert("Kandidat berhasil ditambahkan!");
+};
+
+// ==========================
+// EDIT KANDIDAT
+// ==========================
+window.editCandidate = async function(id, oldName) {
+  const newName = prompt("Edit nama kandidat:", oldName);
+  if (!newName) return;
+
+  await update(ref(db, "candidates/" + id), {
+    name: newName
+  });
+
+  alert("Nama kandidat diperbarui!");
+};
+
+// ==========================
+// HAPUS KANDIDAT
+// ==========================
+window.deleteCandidate = async function(id) {
+  const confirmDelete = confirm("Yakin ingin menghapus kandidat ini?");
+  if (!confirmDelete) return;
+
+  await remove(ref(db, "candidates/" + id));
+  await remove(ref(db, "results/" + id));
+
+  alert("Kandidat berhasil dihapus!");
+};
+
+// ==========================
+// RESET VOTING
+// ==========================
+window.resetVoting = async function() {
+  const konfirmasi = confirm("Yakin reset semua voting?");
+  if (!konfirmasi) return;
+
+  const snapshot = await get(ref(db, "candidates"));
+  const candidates = snapshot.val();
+
+  if (candidates) {
+    for (let id in candidates) {
+      await set(ref(db, "results/" + id), 0);
+    }
+  }
+
+  await set(ref(db, "users"), {});
+  await update(ref(db, "settings"), {
+    votingOpen: true
+  });
+
+  alert("Voting berhasil direset & dibuka kembali!");
+};
+</script>
+
+</body>
+</html>

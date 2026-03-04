@@ -1,0 +1,115 @@
+/* RESET */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+/* BODY */
+body {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #4e73df, #1cc88a);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+/* CARD CONTAINER */
+body > * {
+  background: white;
+  width: 100%;
+  max-width: 500px;
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+  text-align: center;
+}
+
+/* HEADINGS */
+h2 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+h3 {
+  margin: 15px 0;
+  color: #555;
+}
+
+/* INPUT */
+input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  margin-bottom: 15px;
+  font-size: 16px;
+  transition: 0.3s;
+}
+
+input:focus {
+  border-color: #4e73df;
+  outline: none;
+  box-shadow: 0 0 5px rgba(78,115,223,0.3);
+}
+
+/* BUTTON */
+button {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  background: #4e73df;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  margin: 8px 0;
+  transition: 0.3s ease;
+}
+
+button:hover {
+  background: #2e59d9;
+  transform: translateY(-2px);
+}
+
+/* KANDIDAT BUTTONS */
+#kandidat button {
+  background: #1cc88a;
+}
+
+#kandidat button:hover {
+  background: #17a673;
+}
+
+/* ADMIN RESULT */
+#hasil {
+  text-align: left;
+  margin-top: 20px;
+}
+
+#hasil p {
+  background: #f8f9fc;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  border-left: 5px solid #4e73df;
+}
+
+/* RESET BUTTON (ADMIN) */
+button:last-child {
+  background: #e74a3b;
+}
+
+button:last-child:hover {
+  background: #c0392b;
+}
+
+/* RESPONSIVE */
+@media (max-width: 480px) {
+  body > * {
+    padding: 20px;
+  }
+}

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voting</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="card">
+  <h2 id="voteTitle">Memuat...</h2>
+
+  <input type="text" id="nim" placeholder="Masukkan NIM">
+  <button onclick="cekNim()">Lanjut</button>
+
+  <div id="kandidat" style="display:none;"></div>
+</div>
+
+<script type="module">
+import { db, ref, get, set, onValue } from "./firebase.js";
+import { runTransaction } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+let currentNim = "";
+
+const kandidatDiv = document.getElementById("kandidat");
+const titleEl = document.getElementById("voteTitle");
+
+// =============================
+// AUTO LOCK SAAT LOAD
+// =============================
+if (localStorage.getItem("locked") === "true") {
+  document.body.innerHTML = "<h2>Anda sudah melakukan voting.</h2>";
+}
+
+// =============================
+// CEK STATUS VOTING
+// =============================
+async function checkVotingStatus() {
+  const snapshot = await get(ref(db, "settings/votingOpen"));
+  return snapshot.exists() ? snapshot.val() : true;
+}
+
+// =============================
+// LOAD JUDUL
+// =============================
+onValue(ref(db, "settings/title"), (snap) => {
+  titleEl.textContent = snap.val() || "Voting";
+});
+
+// =============================
+// LOAD KANDIDAT
+// =============================
+onValue(ref(db, "candidates"), (snapshot) => {
+  const data = snapshot.val();
+  kandidatDiv.innerHTML = "<h3>Pilih Kandidat</h3>";
+
+  if (!data) return;
+
+  Object.keys(data).forEach((id) => {
+    kandidatDiv.innerHTML += `
+      <button onclick="vote('${id}')">${data[id].name}</button>
+    `;
+  });
+});
+
+// =============================
+// CEK NIM
+// =============================
+window.cekNim = async function() {
+
+  const votingOpen = await checkVotingStatus();
+
+  if (!votingOpen) {
+    alert("Voting sedang ditutup oleh admin!");
+    return;
+  }
+
+  if (localStorage.getItem("locked") === "true") {
+    document.body.innerHTML = "<h2>Anda sudah melakukan voting.</h2>";
+    return;
+  }
+
+  const nim = document.getElementById("nim").value.trim();
+
+  if (!nim) {
+    alert("Masukkan NIM!");
+    return;
+  }
+
+  const snapshot = await get(ref(db, "users/" + nim));
+
+  if (snapshot.exists()) {
+    alert("NIM ini sudah digunakan!");
+  } else {
+    currentNim = nim;
+    kandidatDiv.style.display = "block";
+  }
+};
+
+// =============================
+// VOTE
+// =============================
+window.vote = async function(kandidatID) {
+
+  const votingOpen = await checkVotingStatus();
+
+  if (!votingOpen) {
+    alert("Voting sudah ditutup!");
+    return;
+  }
+
+  if (!currentNim) {
+    alert("Masukkan NIM terlebih dahulu!");
+    return;
+  }
+
+  if (localStorage.getItem("locked") === "true") {
+    alert("Anda sudah voting!");
+    return;
+  }
+
+  try {
+
+    // Tambah suara (AMAN dengan transaction)
+    const resultRef = ref(db, "results/" + kandidatID);
+
+    await runTransaction(resultRef, (current) => {
+      return (current || 0) + 1;
+    });
+
+    // Tandai NIM sudah voting
+    await set(ref(db, "users/" + currentNim), {
+      hasVoted: true
+    });
+
+    // Kunci device
+    localStorage.setItem("locked", "true");
+
+    document.body.innerHTML = "<h2>Terima kasih sudah voting ✅</h2>";
+
+  } catch (error) {
+    console.error(error);
+    alert("Terjadi kesalahan database!");
+  }
+};
+</script>
+
+</body>
+</html>
